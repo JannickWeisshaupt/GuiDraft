@@ -64,13 +64,16 @@ class LabelWithEntry(tk.Frame):
         self.entry.delete(0, 'end')
         self.entry.insert(0, fmt.format(value))
 
+    def bind(self, sequence=None, func=None, add=None):
+        self.entry.bind(sequence=sequence, func=func, add=add)
+
 
 class EmbeddedFigure(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.master = master
 
-        self.options_dict = {'logarithmic': [False, False]}
+        self.options_dict = {'logarithmic': [False, False],'xlim': None}
 
         self.f = plt.Figure(figsize=(10, 8))
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
@@ -121,11 +124,15 @@ class EmbeddedFigure(tk.Frame):
         freqs, fft_sig, fft_sig_abs = make_fourier_trans(x, y)
         self.subplot2.plot(freqs, fft_sig_abs)
 
-        self.subplot2.set_xlim(0, freqs.max())
+        if self.options_dict['xlim'] is None:
+            self.subplot2.set_xlim(0, freqs.max())
+        else:
+            self.subplot2.set_xlim(self.options_dict['xlim'][0], self.options_dict['xlim'][1])
         self.subplot2.set_ylabel('Spectrum')
 
         if self.options_dict['logarithmic'][0]:
-            self.subplot2.set_xlim(left=(freqs.max() - freqs.min()) / 1000)
+            if self.options_dict['xlim'] is not None and self.options_dict['xlim'][0] != 0:
+                self.subplot2.set_xlim(left=(freqs.max() - freqs.min()) / 1000)
             self.subplot2.set_xscale('log')
 
         else:
@@ -201,7 +208,20 @@ class FigureOptionFrame(tk.Frame):
                                                  command=self.set_values_for_figure)
         self.log_checkbutton_y.pack(side=tk.LEFT, padx=self.padx)
 
+        self.xmin_entry = LabelWithEntry(self,'fmin=', width_entry=5,width_label=5)
+        self.xmin_entry.bind("<Return>",lambda event: self.set_values_for_figure())
+        self.xmin_entry.pack(side=tk.LEFT, padx=self.padx)
+
+        self.xmax_entry = LabelWithEntry(self,'fmax=', width_entry=5,width_label=5)
+        self.xmax_entry.bind("<Return>",lambda event: self.set_values_for_figure())
+        self.xmax_entry.pack(side=tk.LEFT, padx=self.padx)
+
     def set_values_for_figure(self):
+        try:
+            self.option_dict['xlim'] = [float(self.xmin_entry.get()), float(self.xmax_entry.get())]
+        except ValueError:
+            self.option_dict['xlim'] = None
+
         if self.log_var_x.get():
             self.option_dict['logarithmic'][0] = True
         else:
